@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Interview Assistant</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; display: flex; justify-content: center; }
+    .chat-container { width: 100%; max-width: 600px; background: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 20px; }
+    h2 { text-align: center; color: #333; margin-top: 0; }
+    .chat-box { height: 320px; border: 1px solid #ddd; overflow-y: auto; padding: 10px; border-radius: 5px; background: #fafafa; margin-bottom: 15px; }
+    .message { margin: 10px 0; padding: 8px 12px; border-radius: 5px; max-width: 80%; line-height: 1.4; }
+    .user { background: #007bff; color: white; margin-left: auto; text-align: right; }
+    .bot { background: #e9ecef; color: #333; white-space: pre-wrap; }
+    .controls { display: flex; gap: 10px; margin-bottom: 10px; }
+    input, button { padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 14px; }
+    input { flex: 1; }
+    button { background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
+    button:hover { background: #218838; }
+  </style>
+</head>
+<body>
+
+<div class="chat-container">
+  <h2>🤖 AI Interview Assistant</h2>
+
+  <div class="controls">
+    <input type="text" id="field" placeholder="Role (e.g. NestJS Developer)">
+    <input type="text" id="level" placeholder="Level (e.g. Junior)">
+    <button onclick="generateQuestion()">Start Practice</button>
+  </div>
+
+  <div class="chat-box" id="chatBox">
+    <div class="message bot">Hello! Role aur Level enter karke "Start Practice" dabayein.</div>
+  </div>
+
+  <div class="controls">
+    <input type="text" id="userAnswer" placeholder="Type your answer here...">
+    <button onclick="submitAnswer()">Submit</button>
+  </div>
+
+  <div class="controls">
+    <input type="email" id="userEmail" placeholder="Enter email for report">
+    <button style="background:#17a2b8" onclick="sendReport()">Send Report</button>
+  </div>
+</div>
+
+<script>
+  let currentQuestion = "";
+  let lastEvaluation = null;
+
+  function appendMessage(sender, text) {
+    const box = document.getElementById('chatBox');
+    const msg = document.createElement('div');
+    msg.className = `message ${sender}`;
+    msg.innerText = text;
+    box.appendChild(msg);
+    box.scrollTop = box.scrollHeight;
+  }
+
+ async function generateQuestion() {
+  const field = document.getElementById('field').value || 'NestJS Developer';
+  const level = document.getElementById('level').value || 'Junior';
+
+  appendMessage('user', `Role: ${field}, Level: ${level}`);
+  appendMessage('bot', 'Generating question...');
+
+  try {
+    const res = await fetch('/interview/generate-question', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ field, level })
+    });
+    const data = await res.json();
+    
+    // Check if response is directly text or an object
+    currentQuestion = typeof data === 'string' ? data : (data.question || data.result || data.message || JSON.stringify(data));
+    
+    appendMessage('bot', `Question:\n${currentQuestion}`);
+  } catch (err) {
+    appendMessage('bot', 'Error generating question.');
+  }
+}
+
+  async function submitAnswer() {
+    const answer = document.getElementById('userAnswer').value;
+    if(!answer || !currentQuestion) return alert('Pehle question generate karein aur answer type karein.');
+
+    appendMessage('user', answer);
+    document.getElementById('userAnswer').value = '';
+    appendMessage('bot', 'Evaluating answer...');
+
+    try {
+      const res = await fetch('/interview/evaluate-answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: currentQuestion, answer })
+      });
+      lastEvaluation = await res.json();
+      
+      appendMessage('bot', `📊 Evaluation:\n- Technical Score: ${lastEvaluation.technicalScore}/10\n- Communication Score: ${lastEvaluation.communicationScore}/10\n\nFeedback: ${lastEvaluation.feedback}\n\nTips: ${lastEvaluation.improvementTips}`);
+    } catch (err) {
+      appendMessage('bot', 'Error evaluating answer.');
+    }
+  }
+
+  async function sendReport() {
+    const email = document.getElementById('userEmail').value;
+    if(!email || !lastEvaluation) return alert('Pehle interview evaluate karein aur valid email dalein.');
+
+    try {
+      const res = await fetch('/interview/send-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, evaluationData: lastEvaluation })
+      });
+      
+      if(res.ok) alert('Report sent to your email!');
+      else alert('Failed to send email.');
+    } catch(err) {
+      alert('Error sending email report.');
+    }
+  }
+</script>
+
+</body>
+</html>
