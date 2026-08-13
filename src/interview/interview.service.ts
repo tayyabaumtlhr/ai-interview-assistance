@@ -11,36 +11,38 @@ export class InterviewService {
     });
   }
 
+  // Pehla Question
   async startPractice(role: string, level: string) {
     const randomSeed = Date.now();
 
-    const systemPrompt = `You are a professional technical interviewer.
-    Generate a UNIQUE and SPECIFIC technical interview question for a "${role}" at "${level}" level.
-    Do NOT ask basic generic intro questions. Ask a practical technical question.
-    Random seed to avoid repeating: ${randomSeed}`;
+    const systemPrompt = `You are a strict and highly professional technical interviewer for the role of "${role}" (${level} level).
+    Task: Ask ONLY ONE initial, highly practical and realistic technical question related to ${role}. 
+    Do NOT give introductory greetings or ask "Tell me about yourself". Jump straight into the first core technical question.
+    Unique ID: ${randomSeed}`;
 
     const response = await this.openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
-      temperature: 0.9,
+      temperature: 0.85,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Start the interview for ${role} (${level} level).` },
+        { role: 'user', content: `Start technical interview for ${role} (${level}).` },
       ],
     });
 
     return { message: response.choices[0].message.content };
   }
 
+  // Agla Dynamic Question + Feedback
   async processChat(chatHistory: any[], role: string, level: string) {
-    const systemPrompt = `You are an expert technical interviewer conducting an interview for a ${role} (${level} level).
-    Your rules:
-    1. Evaluate the user's last answer in 1-2 lines (mention what was correct or missing).
-    2. Ask the NEXT relevant technical interview question.
-    3. Keep responses structured and concise.`;
+    const systemPrompt = `You are an expert interviewer conducting a live interview for a ${role} (${level} level).
+    Instructions:
+    1. Briefly evaluate the candidate's last answer (1-2 lines maximum - mention what was correct or missing).
+    2. Immediately ask the NEXT DIFFERENT technical question related to ${role}. NEVER repeat previous questions.
+    3. Keep questions progressive (moving from basic concepts to scenario-based problems).`;
 
     const response = await this.openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
-      temperature: 0.75,
+      temperature: 0.8,
       messages: [
         { role: 'system', content: systemPrompt },
         ...chatHistory,
@@ -48,5 +50,25 @@ export class InterviewService {
     });
 
     return { message: response.choices[0].message.content };
+  }
+
+  // Detailed Report for Email
+  async generateReport(chatHistory: any[], role: string, level: string) {
+    const prompt = `Analyze this interview transcript for a ${role} (${level} level) position:
+    ${JSON.stringify(chatHistory)}
+
+    Generate a detailed performance report including:
+    1. Overall Score (out of 10)
+    2. Key Strengths
+    3. Areas for Improvement
+    4. Model Answers for missed questions`;
+
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      temperature: 0.5,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    return response.choices[0].message.content;
   }
 }
