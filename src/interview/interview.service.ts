@@ -14,13 +14,14 @@ export class InterviewService {
   async startPractice(role: string, level: string) {
     const randomSeed = Date.now();
 
-    const systemPrompt = `You are a technical interviewer. 
-    Generate a UNIQUE, RANDOM, and PRACTICAL interview question for a "${role}" (${level} level).
-    Do NOT repeat default questions. Random Seed: ${randomSeed}`;
+    const systemPrompt = `You are a professional technical interviewer.
+    Generate a UNIQUE and SPECIFIC technical interview question for a "${role}" at "${level}" level.
+    Do NOT ask basic generic intro questions. Ask a practical technical question.
+    Random seed to avoid repeating: ${randomSeed}`;
 
     const response = await this.openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
-      temperature: 0.85,
+      temperature: 0.9,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Start the interview for ${role} (${level} level).` },
@@ -31,14 +32,15 @@ export class InterviewService {
   }
 
   async processChat(chatHistory: any[], role: string, level: string) {
-    const systemPrompt = `You are a strict technical interviewer for a ${role} (${level} level).
-    1. Briefly evaluate the user's previous answer.
-    2. Ask the NEXT logical technical interview question.
-    3. Keep responses interactive and professional.`;
+    const systemPrompt = `You are an expert technical interviewer conducting an interview for a ${role} (${level} level).
+    Your rules:
+    1. Evaluate the user's last answer in 1-2 lines (mention what was correct or missing).
+    2. Ask the NEXT relevant technical interview question.
+    3. Keep responses structured and concise.`;
 
     const response = await this.openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
-      temperature: 0.7,
+      temperature: 0.75,
       messages: [
         { role: 'system', content: systemPrompt },
         ...chatHistory,
