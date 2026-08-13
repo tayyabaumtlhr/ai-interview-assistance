@@ -16,10 +16,10 @@ export class InterviewService {
 
   async startPractice(role: string, level: string) {
     try {
-      // Updated model name to gemini-2.5-flash
+      // Using gemini-2.5-flash (Official stable model for free tier)
       const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-      const prompt = `You are an expert interviewer for a ${level} level ${role} position. 
-Greeting the candidate politely and ask the FIRST technical interview question directly. Keep the tone professional and question concise.`;
+      const prompt = `You are an expert technical interviewer for a ${level} level ${role} position. 
+Greet the candidate politely and ask the FIRST technical interview question directly. Keep the tone professional and question concise.`;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
