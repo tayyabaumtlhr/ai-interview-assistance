@@ -16,7 +16,8 @@ export class InterviewService {
 
   async startPractice(role: string, level: string) {
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      // Model name updated to gemini-1.5-flash-latest
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
       const prompt = `You are an expert interviewer for a ${level} level ${role} position. 
 Greeting the candidate politely and ask the FIRST technical interview question directly. Keep the tone professional and question concise.`;
 
@@ -31,9 +32,8 @@ Greeting the candidate politely and ask the FIRST technical interview question d
 
   async processChat(chatHistory: any[], role: string, level: string) {
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
-      // Convert chat history for prompt context
       let formattedHistory = chatHistory
         .map((msg) => `${msg.sender === 'bot' || msg.role === 'assistant' ? 'Interviewer' : 'Candidate'}: ${msg.text || msg.content}`)
         .join('\n');
@@ -55,7 +55,7 @@ Evaluate the candidate's last answer briefly and ask the next follow-up intervie
 
   async generateReport(chatHistory: any[], role: string, level: string) {
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
       let formattedHistory = chatHistory
         .map((msg) => `${msg.sender === 'bot' || msg.role === 'assistant' ? 'Interviewer' : 'Candidate'}: ${msg.text || msg.content}`)
