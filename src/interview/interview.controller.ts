@@ -1,68 +1,21 @@
 import { Controller, Post, Body } from '@nestjs/common';
-import { OpenaiService } from './openai/openai.service';
-import { EmailService } from './email/email.service';
-import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
+import { InterviewService } from './interview.service'; // Apne service file path ke mutabiq adjust karein
 
-@ApiTags('Interview Practice')
 @Controller('interview')
 export class InterviewController {
-  constructor(
-    private readonly openaiService: OpenaiService,
-    private readonly emailService: EmailService,
-  ) {}
+  constructor(private readonly interviewService: InterviewService) {}
 
-  @Post('generate-question')
-  @ApiOperation({ summary: 'Generate a role-specific interview question' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        field: { type: 'string', example: 'NestJS Backend Developer' },
-        level: { type: 'string', example: 'Junior' },
-      },
-    },
-  })
-  async generateQuestion(@Body() body: { field: string; level: string }) {
-    const question = await this.openaiService.generateQuestion(body.field, body.level);
-    return { question };
+  // 1. Pehla Question mangwane ke liye
+  @Post('start')
+  async startInterview(@Body() body: { role: string; level: string }) {
+    return this.interviewService.startPractice(body.role, body.level);
   }
 
-  @Post('evaluate-answer')
-  @ApiOperation({ summary: 'Analyze and grade a candidate response' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        question: { type: 'string', example: 'What is Dependency Injection in NestJS?' },
-        answer: { type: 'string', example: 'It is a design pattern used to increase modularity and reuse.' },
-      },
-    },
-  })
-  async evaluateAnswer(@Body() body: { question: string; answer: string }) {
-    const evaluation = await this.openaiService.analyzeAnswer(body.question, body.answer);
-    return evaluation;
-  }
-
-  @Post('send-report')
-  @ApiOperation({ summary: 'Send performance report via email' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        email: { type: 'string', example: 'user@example.com' },
-        evaluationData: {
-          type: 'object',
-          example: {
-            technicalScore: 8,
-            communicationScore: 9,
-            feedback: 'Great technical understanding.',
-            improvementTips: 'Practice more on real-world edge cases.',
-          },
-        },
-      },
-    },
-  })
-  async sendReport(@Body() body: { email: string; evaluationData: any }) {
-    return await this.emailService.sendInterviewReport(body.email, body.evaluationData);
+  // 2. Continuing Conversation / Answer bhejne aur agla Question mangwane ke liye
+  @Post('chat')
+  async processChat(
+    @Body() body: { chatHistory: { role: 'user' | 'assistant' | 'system'; content: string }[]; role: string; level: string },
+  ) {
+    return this.interviewService.processChat(body.chatHistory, body.role, body.level);
   }
 }
