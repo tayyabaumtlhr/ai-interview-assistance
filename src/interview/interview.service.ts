@@ -1,74 +1,81 @@
-import { Injectable } from '@nestjs/common';
-import OpenAI from 'openai';
+import { Injectable, Logger } from '@nestjs/common';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 @Injectable()
 export class InterviewService {
-  private openai: OpenAI;
+  private readonly logger = new Logger(InterviewService.name);
+  private genAI: GoogleGenerativeAI;
 
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      this.logger.error('GEMINI_API_KEY is missing in environment variables');
+    }
+    this.genAI = new GoogleGenerativeAI(apiKey || '');
   }
 
-  // Pehla Question
   async startPractice(role: string, level: string) {
-    const randomSeed = Date.now();
+    try {
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const prompt = `You are an expert interviewer for a ${level} level ${role} position. 
+Greeting the candidate politely and ask the FIRST technical interview question directly. Keep the tone professional and question concise.`;
 
-    const systemPrompt = `You are a strict and highly professional technical interviewer for the role of "${role}" (${level} level).
-    Task: Ask ONLY ONE initial, highly practical and realistic technical question related to ${role}. 
-    Do NOT give introductory greetings or ask "Tell me about yourself". Jump straight into the first core technical question.
-    Unique ID: ${randomSeed}`;
-
-    const response = await this.openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      temperature: 0.85,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Start technical interview for ${role} (${level}).` },
-      ],
-    });
-
-    return { message: response.choices[0].message.content };
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return { question: response.text() };
+    } catch (error: any) {
+      this.logger.error('Error starting interview with Gemini:', error);
+      throw error;
+    }
   }
 
-  // Agla Dynamic Question + Feedback
   async processChat(chatHistory: any[], role: string, level: string) {
-    const systemPrompt = `You are an expert interviewer conducting a live interview for a ${role} (${level} level).
-    Instructions:
-    1. Briefly evaluate the candidate's last answer (1-2 lines maximum - mention what was correct or missing).
-    2. Immediately ask the NEXT DIFFERENT technical question related to ${role}. NEVER repeat previous questions.
-    3. Keep questions progressive (moving from basic concepts to scenario-based problems).`;
+    try {
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const response = await this.openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      temperature: 0.8,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...chatHistory,
-      ],
-    });
+      // Convert chat history for prompt context
+      let formattedHistory = chatHistory
+        .map((msg) => `${msg.sender === 'bot' || msg.role === 'assistant' ? 'Interviewer' : 'Candidate'}: ${msg.text || msg.content}`)
+        .join('\n');
 
-    return { message: response.choices[0].message.content };
+      const prompt = `You are interviewing a candidate for a ${level} level ${role} role.
+Here is the previous conversation history:
+${formattedHistory}
+
+Evaluate the candidate's last answer briefly and ask the next follow-up interview question. If enough questions have been asked (around 5-6), conclude the interview politely and inform them to generate the evaluation report.`;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return { reply: response.text() };
+    } catch (error: any) {
+      this.logger.error('Error in processChat with Gemini:', error);
+      throw error;
+    }
   }
 
-  // Detailed Report for Email
   async generateReport(chatHistory: any[], role: string, level: string) {
-    const prompt = `Analyze this interview transcript for a ${role} (${level} level) position:
-    ${JSON.stringify(chatHistory)}
+    try {
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    Generate a detailed performance report including:
-    1. Overall Score (out of 10)
-    2. Key Strengths
-    3. Areas for Improvement
-    4. Model Answers for missed questions`;
+      let formattedHistory = chatHistory
+        .map((msg) => `${msg.sender === 'bot' || msg.role === 'assistant' ? 'Interviewer' : 'Candidate'}: ${msg.text || msg.content}`)
+        .join('\n');
 
-    const response = await this.openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      temperature: 0.5,
-      messages: [{ role: 'user', content: prompt }],
-    });
+      const prompt = `Analyze this complete technical interview transcript for a ${level} level ${role} position:
+${formattedHistory}
 
-    return response.choices[0].message.content;
+Provide a detailed evaluation report including:
+1. Overall Performance Score (out of 10)
+2. Key Strengths
+3. Areas for Improvement
+4. Final Hiring Recommendation`;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
+    } catch (error: any) {
+      this.logger.error('Error generating report with Gemini:', error);
+      throw error;
+    }
   }
 }
