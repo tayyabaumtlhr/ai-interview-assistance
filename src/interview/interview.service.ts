@@ -1,26 +1,37 @@
 import { Injectable } from '@nestjs/common';
-import { CreateInterviewDto } from './dto/create-interview.dto';
-import { UpdateInterviewDto } from './dto/update-interview.dto';
+import OpenAI from 'openai';
 
 @Injectable()
 export class InterviewService {
-  create(createInterviewDto: CreateInterviewDto) {
-    return 'This action adds a new interview';
+  private openai: OpenAI;
+
+  constructor() {
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY, // Apni .env file se API Key lega
+    });
   }
 
-  findAll() {
-    return `This action returns all interview`;
-  }
+  async startPractice(role: string, level: string) {
+    // Unique seed add karne se AI har millisecond par naya response deta hai
+    const randomSeed = Date.now();
 
-  findOne(id: number) {
-    return `This action returns a #${id} interview`;
-  }
+    const systemPrompt = `You are a technical interviewer conducting a live coding interview.
+    Generate a UNIQUE, RANDOM, and DYNAMIC technical interview question for a "${role}" position at "${level}" level.
+    Do NOT repeat common generic default questions. 
+    Make sure the question tests practical knowledge.
+    Random Context Seed: ${randomSeed}`;
 
-  update(id: number, updateInterviewDto: UpdateInterviewDto) {
-    return `This action updates a #${id} interview`;
-  }
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-3.5-turbo', // ya 'gpt-4o'
+      temperature: 0.85,      // High temperature guarantees randomness
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Start the interview for ${role} (${level} level). Ask me the first question.` },
+      ],
+    });
 
-  remove(id: number) {
-    return `This action removes a #${id} interview`;
+    return {
+      message: response.choices[0].message.content,
+    };
   }
 }
